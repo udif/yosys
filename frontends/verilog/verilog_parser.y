@@ -268,6 +268,17 @@ module_para_list:
 
 single_module_para:
 	/* empty */ |
+	single_module_localparam |
+	single_module_parameter;
+
+single_module_localparam:
+	TOK_LOCALPARAM {
+		if (astbuf1) delete astbuf1;
+		astbuf1 = new AstNode(AST_LOCALPARAM);
+		astbuf1->children.push_back(AstNode::mkconst_int(0, true));
+	} param_signed param_integer param_range single_param_decl | single_param_decl;
+
+single_module_parameter:
 	TOK_PARAMETER {
 		if (astbuf1) delete astbuf1;
 		astbuf1 = new AstNode(AST_PARAMETER);
