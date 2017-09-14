@@ -1,0 +1,14 @@
+Goal: Add support for typedefs and structs (and hence typedef struct) to Yosys (under the -sv flag).
+
+Project stages:
+1. Update Lexer (verilog_lexer.l) to recognize 'typedef', 'struct', 'packed', 'unpacked' keywords.
+   New tokens, TOK_TYPEEF, TOK_STRUCT, etc.
+2. Update Parser (verilog_parser.y) to correctly parse the syntax and to fail with syntax errors when incorrect syntax is used.
+   Unsupported construct might be optionally failed with a more descriptive message.
+3. Extend the AST types (../ast/ast.h) and generate the new AST tree constructs in the parser.
+4. Extend the AST front end to recognized the extended AST types and generate the correct RTLIL constructs.
+
+Implement structs by extending the AST with either AST_TYPEDEF ot AST_STRUCT.
+The AST parser should then do the same stuff done by AST CONCAT_LIST and concat_list rule in verilog_parser.y
+
+Need to update hierarchical_id to handle struct hierarchy.

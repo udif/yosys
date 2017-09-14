@@ -210,6 +210,8 @@ YOSYS_NAMESPACE_END
 
 "enum"    { SV_KEYWORD(TOK_ENUM); }
 "typedef" { SV_KEYWORD(TOK_TYPEDEF); }
+"struct"  { SV_KEYWORD(TOK_STRUCT); }
+"packed"  { SV_KEYWORD(TOK_PACKED); }
 
 [0-9][0-9_]* {
 	frontend_verilog_yylval.string = new std::string(yytext);
