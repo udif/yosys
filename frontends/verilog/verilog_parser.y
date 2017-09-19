@@ -121,7 +121,7 @@ static void free_attr(std::map<std::string, AstNode*> *al)
 %token TOK_STRUCT TOK_PACKED
 
 %type <ast> range range_or_multirange  non_opt_range non_opt_multirange range_or_signed_int
-%type <ast> wire_type expr basic_expr concat_list rvalue lvalue lvalue_concat_list
+%type <ast> wire_type typedef_type expr basic_expr concat_list rvalue lvalue lvalue_concat_list
 %type <string> opt_label tok_prim_wrapper hierarchical_id
 %type <boolean> opt_signed unique_case_attr
 %type <al> attr case_attr
@@ -880,7 +880,7 @@ single_defparam_decl:
 	};
 
 typedef_decl:
-	attr TOK_TYPEDEF wire_type range {
+	attr TOK_TYPEDEF typedef_type range {
 		albuf = $1;
 		astbuf1 = $3;
 		astbuf2 = $4;
@@ -901,6 +901,44 @@ typedef_decl:
 			delete astbuf2;
 		free_attr(albuf);
 	} ';' ;
+
+typedef_type:
+	{
+		astbuf3 = new AstNode(AST_TYPEDEF);
+	} typedef_type_token_list {
+		$$ = astbuf3;
+	};
+
+typedef_type_token_list:
+	typedef_type_token | typedef_type_token_list typedef_type_token;
+
+typedef_type_token:
+	TOK_WIRE {
+	} |
+	TOK_REG {
+		astbuf3->is_reg = true;
+	} |
+	TOK_INTEGER {
+		astbuf3->is_reg = true;
+		astbuf3->range_left = 31;
+		astbuf3->range_right = 0;
+		astbuf3->is_signed = true;
+	} |
+	TOK_GENVAR {
+		astbuf3->type = AST_GENVAR;
+		astbuf3->is_reg = true;
+		astbuf3->range_left = 31;
+		astbuf3->range_right = 0;
+	} |
+	TOK_SIGNED {
+		astbuf3->is_signed = true;
+	} |
+	TOK_RAND {
+		current_wire_rand = true;
+	} |
+	TOK_CONST {
+		current_wire_const = true;
+	};
 
 wire_decl:
 	attr wire_type range {

@@ -68,6 +68,8 @@ std::string AST::type2str(AstNodeType type)
 	X(AST_FUNCTION)
 	X(AST_DPI_FUNCTION)
 	X(AST_WIRE)
+	X(AST_TYPEDEF)
+	X(AST_STRUCT)
 	X(AST_MEMORY)
 	X(AST_AUTOWIRE)
 	X(AST_PARAMETER)
@@ -400,6 +402,21 @@ void AstNode::dumpVlog(FILE *f, std::string indent) const
 			fprintf(f, "%s" "wire", indent.c_str());
 		if (is_reg)
 			fprintf(f, "%s" "reg", (is_input || is_output) ? " " : indent.c_str());
+		if (is_signed)
+			fprintf(f, " signed");
+		for (auto child : children) {
+			fprintf(f, " ");
+			child->dumpVlog(f, "");
+		}
+		fprintf(f, " %s", id2vl(str).c_str());
+		fprintf(f, ";\n");
+		break;
+
+	case AST_TYPEDEF:
+		if (is_reg)
+			fprintf(f, "%s" "typedef reg", indent.c_str());
+		else
+			fprintf(f, "%s" "typedef wire", indent.c_str());
 		if (is_signed)
 			fprintf(f, " signed");
 		for (auto child : children) {
