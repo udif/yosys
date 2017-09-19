@@ -118,6 +118,7 @@ static void free_attr(std::map<std::string, AstNode*> *al)
 %token TOK_RESTRICT TOK_COVER TOK_PROPERTY TOK_ENUM TOK_TYPEDEF
 %token TOK_RAND TOK_CONST TOK_CHECKER TOK_ENDCHECKER TOK_EVENTUALLY
 %token TOK_INCREMENT TOK_DECREMENT TOK_UNIQUE TOK_PRIORITY
+%token TOK_STRUCT TOK_PACKED
 
 %type <ast> range range_or_multirange  non_opt_range non_opt_multirange range_or_signed_int
 %type <ast> wire_type expr basic_expr concat_list rvalue lvalue lvalue_concat_list
@@ -483,6 +484,7 @@ module_body:
 
 module_body_stmt:
 	task_func_decl | specify_block |param_decl | localparam_decl | defparam_decl | specparam_declaration | wire_decl | assign_stmt | cell_stmt |
+	typedef_decl |
 	always_stmt | TOK_GENERATE module_gen_body TOK_ENDGENERATE | defattr | assert_property | checker_decl;
 
 checker_decl:
@@ -883,6 +885,29 @@ single_defparam_decl:
 			node->children.push_back($1);
 		ast_stack.back()->children.push_back(node);
 	};
+
+typedef_decl:
+	attr TOK_TYPEDEF wire_type range {
+		albuf = $1;
+		astbuf1 = $3;
+		astbuf2 = $4;
+		if (astbuf1->range_left >= 0 && astbuf1->range_right >= 0) {
+			if (astbuf2) {
+				frontend_verilog_yyerror("Syntax error.");
+			} else {
+				astbuf2 = new AstNode(AST_RANGE);
+				astbuf2->children.push_back(AstNode::mkconst_int(astbuf1->range_left, true));
+				astbuf2->children.push_back(AstNode::mkconst_int(astbuf1->range_right, true));
+			}
+		}
+		if (astbuf2 && astbuf2->children.size() != 2)
+			frontend_verilog_yyerror("Syntax error.");
+	} wire_name {
+		delete astbuf1;
+		if (astbuf2 != NULL)
+			delete astbuf2;
+		free_attr(albuf);
+	} ';' ;
 
 wire_decl:
 	attr wire_type range {
@@ -1335,7 +1360,7 @@ simple_behavioral_stmt:
 // this production creates the obligatory if-else shift/reduce conflict
 behavioral_stmt:
 	defattr | assert | wire_decl | param_decl | localparam_decl |
-	non_opt_delay behavioral_stmt |
+	non_opt_delay behavioral_stmt | typedef_decl |
 	simple_behavioral_stmt ';' | ';' |
 	hierarchical_id attr {
 		AstNode *node = new AstNode(AST_TCALL);
