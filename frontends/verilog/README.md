@@ -8,8 +8,8 @@ Project stages:
 ---------------
 
 1. ~~Update Lexer (verilog_lexer.l) to recognize 'typedef', 'struct', 'packed', 'unpacked' keywords.
-   New tokens, TOK_TYPEEF, TOK_STRUCT, etc.~~ DONE
-2. ~~Update Parser (verilog_parser.y) to correctly parse the syntax and to fail with syntax errors when incorrect syntax is used.~~ DONE
+   New tokens, TOK_TYPEEF, TOK_STRUCT, etc.~~ DONE  
+2. ~~Update Parser (verilog_parser.y) to correctly parse the syntax and to fail with syntax errors when incorrect syntax is used.~~ DONE  
    Unsupported construct might be optionally failed with a more descriptive message.
    It looks like the correct place  for declaration would be the module_body_stmt as well as behavioral_stmt.
    In other words, on any place we find a wire_decl
