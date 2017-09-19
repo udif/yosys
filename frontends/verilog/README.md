@@ -10,12 +10,13 @@ Project stages:
 1. ~~Update Lexer (verilog_lexer.l) to recognize 'typedef', 'struct', 'packed', 'unpacked' keywords.
    New tokens, TOK_TYPEEF, TOK_STRUCT, etc.~~ DONE  
 2. ~~Update Parser (verilog_parser.y) to correctly parse the syntax and to fail with syntax errors when incorrect syntax is used.~~ DONE  
-   Unsupported construct might be optionally failed with a more descriptive message.
-   It looks like the correct place  for declaration would be the module_body_stmt as well as behavioral_stmt.
-   In other words, on any place we find a wire_decl
-   The usage can be handled by the wire_type rule
-3. Extend the AST types (../ast/ast.h) and generate the new AST tree constructs in the parser.
-   Implement AST_TYPEDEF and/or AST_STRUCT.
+   Unsupported construct might be optionally failed with a more descriptive message.  
+   It looks like the correct place  for declaration would be the module_body_stmt as well as behavioral_stmt.  
+   In other words, on any place we find a wire_decl  
+   The usage can be handled by the wire_type rule  
+3. ~~Extend the AST types (../ast/ast.h) and generate the new AST tree constructs in the parser.~~ Seemd to be at least partially done  
+   Implement Verilog dumping of the new AST types (Done for AST_TYPEDEF)  
+   Implement AST_TYPEDEF and/or AST_STRUCT.  
 4. Extend the AST front end to recognized the extended AST types and generate the correct RTLIL constructs.
    When accessing structures, the AST parser should then do the same stuff done by AST CONCAT_LIST and concat_list rule in verilog_parser.y
 
