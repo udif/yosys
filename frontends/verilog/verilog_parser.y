@@ -890,15 +890,15 @@ typedef_decl:
 	attr TOK_TYPEDEF typedef_type range {
 		albuf = $1;
 		// $3 is in fact astbuf3 and contains the AST_WIRE node
-		astbuf1 = new AstNode(AST_TYPEDEF, $3);
+		astbuf1 = $3;
 		astbuf2 = $4;
-		if (astbuf3->range_left >= 0 && astbuf3->range_right >= 0) {
+		if (astbuf1->range_left >= 0 && astbuf1->range_right >= 0) {
 			if (astbuf2) {
 				frontend_verilog_yyerror("Syntax error.");
 			} else {
 				astbuf2 = new AstNode(AST_RANGE);
-				astbuf2->children.push_back(AstNode::mkconst_int(astbuf3->range_left, true));
-				astbuf2->children.push_back(AstNode::mkconst_int(astbuf3->range_right, true));
+				astbuf2->children.push_back(AstNode::mkconst_int(astbuf1->range_left, true));
+				astbuf2->children.push_back(AstNode::mkconst_int(astbuf1->range_right, true));
 			}
 		}
 		if (astbuf2 && astbuf2->children.size() != 2)
@@ -908,11 +908,14 @@ typedef_decl:
 		if (astbuf2 != NULL)
 			delete astbuf2;
 		free_attr(albuf);
+		//astbuf1 = new AstNode(AST_TYPEDEF, $3);
 	} ';' ;
 
 typedef_type:
 	{
 		astbuf3 = new AstNode(AST_WIRE);
+		current_wire_rand = false;
+		current_wire_const = false;
 	} typedef_type_token_list {
 		$$ = astbuf3;
 	};
@@ -977,8 +980,7 @@ typedef_name:
 			// Memory ranges are following the packed range
 			node->children.push_back($2);
 		}
-		astbuf1->children.push_back(node);
-		ast_stack.back()->children.push_back(astbuf1);
+		ast_stack.back()->children.push_back(node);
 		delete $1;
 	};
 
