@@ -889,20 +889,21 @@ single_defparam_decl:
 typedef_decl:
 	attr TOK_TYPEDEF typedef_type range {
 		albuf = $1;
-		astbuf1 = $3;
+		// $3 is in fact astbuf3 and contains the AST_WIRE node
+		astbuf1 = new AstNode(AST_TYPEDEF, $3);
 		astbuf2 = $4;
-		if (astbuf1->range_left >= 0 && astbuf1->range_right >= 0) {
+		if (astbuf3->range_left >= 0 && astbuf3->range_right >= 0) {
 			if (astbuf2) {
 				frontend_verilog_yyerror("Syntax error.");
 			} else {
 				astbuf2 = new AstNode(AST_RANGE);
-				astbuf2->children.push_back(AstNode::mkconst_int(astbuf1->range_left, true));
-				astbuf2->children.push_back(AstNode::mkconst_int(astbuf1->range_right, true));
+				astbuf2->children.push_back(AstNode::mkconst_int(astbuf3->range_left, true));
+				astbuf2->children.push_back(AstNode::mkconst_int(astbuf3->range_right, true));
 			}
 		}
 		if (astbuf2 && astbuf2->children.size() != 2)
 			frontend_verilog_yyerror("Syntax error.");
-	} wire_name {
+	} typedef_name {
 		delete astbuf1;
 		if (astbuf2 != NULL)
 			delete astbuf2;
@@ -911,7 +912,7 @@ typedef_decl:
 
 typedef_type:
 	{
-		astbuf3 = new AstNode(AST_TYPEDEF);
+		astbuf3 = new AstNode(AST_WIRE);
 	} typedef_type_token_list {
 		$$ = astbuf3;
 	};
@@ -945,6 +946,40 @@ typedef_type_token:
 	} |
 	TOK_CONST {
 		current_wire_const = true;
+	};
+
+typedef_name:
+	TOK_ID range_or_multirange {
+		// Reminder:
+		// astbuf1 - Top node (AST_TYPEDEF)
+		// astbuf2 - range (packed vector)
+		// astbuf3 - AST_WIRE node defined in typedef_type
+		if (astbuf1 == nullptr)
+			frontend_verilog_yyerror("Syntax error.");
+		AstNode *node = astbuf1->clone();
+		// Wire name
+		node->str = *$1;
+		// Copy all attributes
+		append_attr_clone(node, albuf);
+		// packed range is 1st children
+		if (astbuf2 != NULL)
+			node->children.push_back(astbuf2->clone());
+		// We have a memory range
+		if ($2 != NULL) {
+			// If no packed range, create a default [0:0]
+			if (!astbuf2) {
+				AstNode *rng = new AstNode(AST_RANGE);
+				rng->children.push_back(AstNode::mkconst_int(0, true));
+				rng->children.push_back(AstNode::mkconst_int(0, true));
+				node->children.push_back(rng);
+			}
+			node->type = AST_MEMORY;
+			// Memory ranges are following the packed range
+			node->children.push_back($2);
+		}
+		astbuf1->children.push_back(node);
+		ast_stack.back()->children.push_back(astbuf1);
+		delete $1;
 	};
 
 wire_decl:
