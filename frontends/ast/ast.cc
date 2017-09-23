@@ -413,18 +413,8 @@ void AstNode::dumpVlog(FILE *f, std::string indent) const
 		break;
 
 	case AST_TYPEDEF:
-		if (is_reg)
-			fprintf(f, "%s" "typedef reg", indent.c_str());
-		else
-			fprintf(f, "%s" "typedef wire", indent.c_str());
-		if (is_signed)
-			fprintf(f, " signed");
-		for (auto child : children) {
-			fprintf(f, " ");
-			child->dumpVlog(f, "");
-		}
-		fprintf(f, " %s", id2vl(str).c_str());
-		fprintf(f, ";\n");
+		fprintf(f, "%s" "typedef ", indent.c_str());
+		children[0]->dumpVlog(f, "");
 		break;
 
 	case AST_MEMORY:
