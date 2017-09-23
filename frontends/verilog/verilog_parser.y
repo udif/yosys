@@ -908,7 +908,9 @@ typedef_decl:
 		if (astbuf2 != NULL)
 			delete astbuf2;
 		free_attr(albuf);
-		//astbuf1 = new AstNode(AST_TYPEDEF, $3);
+		AstNode *tmp = ast_stack.back()->children.back();
+		AstNode *asttypedef = new AstNode(AST_TYPEDEF, tmp);
+		ast_stack.back()->children.back() = asttypedef;
 	} ';' ;
 
 typedef_type:
@@ -954,9 +956,8 @@ typedef_type_token:
 typedef_name:
 	TOK_ID range_or_multirange {
 		// Reminder:
-		// astbuf1 - Top node (AST_TYPEDEF)
+		// astbuf1 - Top node (AST_WIRE)
 		// astbuf2 - range (packed vector)
-		// astbuf3 - AST_WIRE node defined in typedef_type
 		if (astbuf1 == nullptr)
 			frontend_verilog_yyerror("Syntax error.");
 		AstNode *node = astbuf1->clone();
