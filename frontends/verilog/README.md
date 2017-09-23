@@ -14,7 +14,9 @@ Project stages:
    It looks like the correct place  for declaration would be the module_body_stmt as well as behavioral_stmt.  
    In other words, on any place we find a wire_decl  
    The usage can be handled by the wire_type rule  
-3. ~~Extend the AST types (../ast/ast.h) and generate the new AST tree constructs in the parser.~~ Seemd to be at least partially done  
+   **UPDATE**: Implemented via a new rule typedef_decl that c;pmed wire_decl an d its subrules, except for input/output/inout port references.  
+3. ~~Extend the AST types (../ast/ast.h) and generate the new AST tree constructs in the parser.~~ DONE  
+   ~~Implement AST Tree dumping of the new AST types~~ (Done for AST_TYPEDEF)  
    Implement Verilog dumping of the new AST types (Done for AST_TYPEDEF)  
    Implement AST_TYPEDEF and/or AST_STRUCT.  
 4. Extend the AST front end to recognized the extended AST types and generate the correct RTLIL constructs.
