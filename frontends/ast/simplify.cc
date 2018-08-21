@@ -322,6 +322,7 @@ bool AstNode::simplify(bool const_fold, bool at_zero, bool in_lvalue, int stage,
 	if (type == AST_MODULE) {
 		current_scope.clear();
 		std::map<std::string, AstNode*> this_wire_scope;
+		std::map<std::string, AstNode*> this_typedef_scope;
 		for (size_t i = 0; i < children.size(); i++) {
 			AstNode *node = children[i];
 			if (node->type == AST_WIRE) {
@@ -382,6 +383,57 @@ bool AstNode::simplify(bool const_fold, bool at_zero, bool in_lvalue, int stage,
 					continue;
 				}
 				this_wire_scope[node->str] = node;
+			}
+			if (node->type == AST_TYPEDEF) {
+				AstNode *typedef_node = node;
+				node = node->children[0];
+				if (this_typedef_scope.count(node->str) > 0) {
+					AstNode *first_node = this_typedef_scope[node->str];
+					if (first_node->children.size() == 0 && node->children.size() == 1 && node->children[0]->type == AST_RANGE) {
+						AstNode *r = node->children[0];
+						if (r->range_valid && r->range_left == 0 && r->range_right == 0) {
+							delete r;
+							node->children.pop_back();
+						}
+					}
+					if (first_node->children.size() != node->children.size())
+						goto typedefs_are_incompatible;
+					for (size_t j = 0; j < node->children.size(); j++) {
+						AstNode *n1 = first_node->children[j], *n2 = node->children[j];
+						if (n1->type == AST_RANGE && n2->type == AST_RANGE && n1->range_valid && n2->range_valid) {
+							if (n1->range_left != n2->range_left)
+								goto typedefs_are_incompatible;
+							if (n1->range_right != n2->range_right)
+								goto typedefs_are_incompatible;
+						} else if (*n1 != *n2)
+							goto typedefs_are_incompatible;
+					}
+					if (first_node->range_left != node->range_left)
+						goto typedefs_are_incompatible;
+					if (first_node->range_right != node->range_right)
+						goto typedefs_are_incompatible;
+				//typedefs_are_compatible:
+					if (node->is_reg)
+						first_node->is_reg = true;
+					if (node->is_logic)
+						first_node->is_logic = true;
+					if (node->is_signed)
+						first_node->is_signed = true;
+					for (auto &it : node->attributes) {
+						if (first_node->attributes.count(it.first) > 0)
+							delete first_node->attributes[it.first];
+						first_node->attributes[it.first] = it.second->clone();
+					}
+					children.erase(children.begin()+(i--));
+					did_something = true;
+					delete typedef_node;
+					continue;
+				typedefs_are_incompatible:
+					if (stage > 1)
+						log_file_error(filename, linenum, "Incompatible re-declaration of typedef %s.\n", node->str.c_str());
+					continue;
+				}
+				this_typedef_scope[node->str] = node;
 			}
 			if (node->type == AST_PARAMETER || node->type == AST_LOCALPARAM || node->type == AST_WIRE || node->type == AST_AUTOWIRE || node->type == AST_GENVAR ||
 					node->type == AST_MEMORY || node->type == AST_FUNCTION || node->type == AST_TASK || node->type == AST_DPI_FUNCTION || node->type == AST_CELL) {
