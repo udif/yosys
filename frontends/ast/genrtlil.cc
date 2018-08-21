@@ -1525,6 +1525,9 @@ RTLIL::SigSpec AstNode::genRTLIL(int width_hint, bool sign_hint)
 			}
 		} /* fall through */
 
+	case AST_TYPEDEF:
+		break;
+		
 	// everything should have been handled above -> print error if not.
 	default:
 		for (auto f : log_files)
