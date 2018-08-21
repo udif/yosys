@@ -168,6 +168,7 @@ design:
 	param_decl design |
 	localparam_decl design |
 	package design |
+	typedef_decl design |
 	/* empty */;
 
 attr:
