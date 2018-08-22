@@ -911,6 +911,11 @@ single_defparam_decl:
 	};
 
 typedef_decl:
+	attr TOK_TYPEDEF TOK_ID ';' {
+		AstNode *asttypedef = new AstNode(AST_TYPEDEF);
+		ast_stack.back()->children.push_back(asttypedef);
+		asttypedef->str = *$3;
+	} |
 	attr TOK_TYPEDEF typedef_type range {
 		albuf = $1;
 		// $3 is in fact astbuf3 and contains the AST_WIRE node
@@ -935,6 +940,7 @@ typedef_decl:
 		AstNode *tmp = ast_stack.back()->children.back();
 		AstNode *asttypedef = new AstNode(AST_TYPEDEF, tmp);
 		ast_stack.back()->children.back() = asttypedef;
+		asttypedef->str = asttypedef->children[0]->str; // duplicate name on TOK_TYPEDEF
 	} ';' ;
 
 typedef_type:
@@ -950,7 +956,8 @@ typedef_type_token_list:
 	typedef_type_token | typedef_type_token_list typedef_type_token;
 
 typedef_type_token:
-	TOK_WIRE {
+	TOK_LOGIC {
+		astbuf3->is_logic = true;
 	} |
 	TOK_REG {
 		astbuf3->is_reg = true;
@@ -961,17 +968,8 @@ typedef_type_token:
 		astbuf3->range_right = 0;
 		astbuf3->is_signed = true;
 	} |
-	TOK_GENVAR {
-		astbuf3->type = AST_GENVAR;
-		astbuf3->is_reg = true;
-		astbuf3->range_left = 31;
-		astbuf3->range_right = 0;
-	} |
 	TOK_SIGNED {
 		astbuf3->is_signed = true;
-	} |
-	TOK_RAND {
-		current_wire_rand = true;
 	} |
 	TOK_CONST {
 		current_wire_const = true;

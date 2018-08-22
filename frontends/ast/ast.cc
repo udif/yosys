@@ -190,6 +190,7 @@ AstNode::AstNode(AstNodeType type, AstNode *child1, AstNode *child2, AstNode *ch
 	this->type = type;
 	filename = current_filename;
 	linenum = get_line_num();
+	is_global = false;
 	is_input = false;
 	is_output = false;
 	is_reg = false;
@@ -1037,8 +1038,30 @@ void AST::process(RTLIL::Design *design, AstNode *ast, bool dump_ast1, bool dump
 	{
 		if ((*it)->type == AST_MODULE)
 		{
-			for (auto n : design->verilog_globals)
-				(*it)->children.push_back(n->clone());
+			// Make room for verilog_globals copy
+			int s = (*it)->children.size();
+			int g = design->verilog_globals.size();
+			(*it)->children.resize(s + g);
+			// Move original children forward
+			for (int i = s-1; i >= 0; i--)
+				(*it)->children[i+g] = (*it)->children[i];
+			// Insert verilog globals at the **beginning**
+			for (int i = 0; i < g; i++) {
+				auto nc = design->verilog_globals[i]->clone();
+				nc->is_global = true;
+				(*it)->children[i] = nc;
+			}
+			/*
+			for (auto n : design->verilog_globals) {
+				auto nc = n->clone();
+				nc->is_global = true;
+				(*it)->children.push_back(nc);
+			}
+			*/
+			// clone globals into **beginning** of module children vector
+			//(*it)->children.insert((*it)->children.begin(), design->verilog_globals.begin(), design->verilog_globals.end());
+			//for (int i = design->verilog_globals.size()-1; i >= 0; i-- )
+			//	(*it)->children[i]->is_global = true;
 
 			for (auto n : design->verilog_packages){
 				for (auto o : n->children) {
