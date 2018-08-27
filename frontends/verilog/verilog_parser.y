@@ -141,13 +141,14 @@ static void free_attr(std::map<std::string, AstNode*> *al)
 %right UNARY_OPS
 
 %define parse.error verbose
-%define parse.lac full
+//%define parse.lac full
 
 %nonassoc FAKE_THEN
 %nonassoc TOK_ELSE
 
 %debug
 
+%glr-parser
 %%
 
 input: {
@@ -243,7 +244,7 @@ hierarchical_id:
 		$$ = $1;
 	};
 
-module:
+module_start:
 	attr TOK_MODULE TOK_ID {
 		do_not_require_port_stubs = false;
 		AstNode *mod = new AstNode(AST_MODULE);
@@ -255,7 +256,13 @@ module:
 		mod->str = *$3;
 		append_attr(mod, $1);
 		delete $3;
-	} module_para_opt module_args_opt ';' module_body TOK_ENDMODULE {
+	} module_para_opt;
+
+module_para_opt:
+	'#' '(' { astbuf1 = nullptr; } module_para_list { if (astbuf1) delete astbuf1; } ')' | /* empty */;
+
+module:
+	module_start module_args_any ';' module_body TOK_ENDMODULE {
 		if (port_stubs.size() != 0)
 			frontend_verilog_yyerror("Missing details for module port `%s'.",
 					port_stubs.begin()->first.c_str());
@@ -264,8 +271,8 @@ module:
 		current_ast_mod = NULL;
 	};
 
-module_para_opt:
-	'#' '(' { astbuf1 = nullptr; } module_para_list { if (astbuf1) delete astbuf1; } ')' | /* empty */;
+module_args_any:
+	module_args_non_ansi | module_args_ansi_opt ;
 
 module_para_list:
 	single_module_para | module_para_list ',' single_module_para;
@@ -284,11 +291,22 @@ single_module_para:
 	} param_signed param_integer param_range single_param_decl |
 	single_param_decl;
 
-module_args_opt:
-	'(' ')' | /* empty */ | '(' module_args optional_comma ')';
+module_args_non_ansi:
+	'(' module_args optional_comma ')';
 
 module_args:
 	module_arg | module_args ',' module_arg;
+
+module_args_ansi_opt:
+	'(' ')'
+	| /* empty */
+	| '(' module_args_ansi ')'
+	| '(' module_args_ansi ',' ')';
+
+module_args_ansi:
+	module_arg_ansi
+	| module_args_ansi ',' module_arg_ansi
+	;
 
 optional_comma:
 	',' | /* empty */;
@@ -320,24 +338,73 @@ module_arg:
 			port_stubs[*$1] = ++port_counter;
 		}
 		delete $1;
-	} module_arg_opt_assignment |
-	attr wire_type range TOK_ID {
-		AstNode *node = $2;
-		node->str = *$4;
-		node->port_id = ++port_counter;
-		if ($3 != NULL)
-			node->children.push_back($3);
-		if (!node->is_input && !node->is_output)
-			frontend_verilog_yyerror("Module port `%s' is neither input nor output.", $4->c_str());
-		if (node->is_reg && node->is_input && !node->is_output && !sv_mode)
-			frontend_verilog_yyerror("Input port `%s' is declared as register.", $4->c_str());
+	};
+
+module_arg_ansi_ports:
+	range TOK_ID module_arg_opt_assignment {
+		astbuf3->port_id = ++port_counter;
+		if ($1 != NULL)
+			astbuf3->children.push_back($1);
+		AstNode *node = astbuf3->clone();
+		node->str = *$2;
+		if (!astbuf3->is_input && !astbuf3->is_output)
+			frontend_verilog_yyerror("Module port `%s' is neither input nor output.", $2->c_str());
+		if (astbuf3->is_reg && astbuf3->is_input && !astbuf3->is_output && !sv_mode)
+			frontend_verilog_yyerror("Input port `%s' is declared as register.", $2->c_str());
 		ast_stack.back()->children.push_back(node);
-		append_attr(node, $1);
-		delete $4;
-	} module_arg_opt_assignment |
-	'.' '.' '.' {
+		// udif fix attr, must be attached to all ports
+		//append_attr(astbuf3, $2);
+		delete $2;
+	}
+	| module_arg_ansi_ports ',' TOK_ID module_arg_opt_assignment {
+		astbuf3->port_id = ++port_counter;
+		AstNode *node = astbuf3->clone();
+		node->str = *$3;
+		if (!astbuf3->is_input && !astbuf3->is_output)
+			frontend_verilog_yyerror("Module port `%s' is neither input nor output.", $3->c_str());
+		if (astbuf3->is_reg && astbuf3->is_input && !astbuf3->is_output && !sv_mode)
+			frontend_verilog_yyerror("Input port `%s' is declared as register.", $3->c_str());
+		ast_stack.back()->children.push_back(node);
+		// udif fix attr, must be attached to all ports
+		//append_attr(astbuf3, $2);
+		delete $3;
+	}
+	;
+
+module_arg_ansi:
+	//udif attr wire_typedef_decl |
+	//udif attr wire_type_token_io wire_typedef_decl |
+	{
+		astbuf3 = new AstNode(AST_WIRE);
+	}
+	attr wire_type_token_io wire_type_token_ansi_list_opt delay module_arg_ansi_ports 
+	| '.' '.' '.' {
 		do_not_require_port_stubs = true;
 	};
+
+wire_type_token_ansi_list:
+	wire_type_token_ansi
+	| wire_type_token_ansi_list wire_type_token_ansi
+	;
+
+wire_type_token_ansi_list_opt:
+	wire_type_token_ansi_list
+	| /* empty */
+	;
+
+wire_type_token_ansi:
+	TOK_WIRE {
+	}
+	| TOK_REG { astbuf3->is_reg = true;	}
+	| TOK_LOGIC { astbuf3->is_logic = true;	}
+	| TOK_INTEGER {
+		astbuf3->is_reg = true;
+		astbuf3->range_left = 31;
+		astbuf3->range_right = 0;
+		astbuf3->is_signed = true;
+	}
+	| TOK_SIGNED { astbuf3->is_signed = true; }
+	;
 
 package:
 	attr TOK_PACKAGE TOK_ID {
@@ -368,30 +435,39 @@ non_opt_delay:
 delay:
 	non_opt_delay | /* empty */;
 
+//udif wire_typedef_decl:
+//udif 	TOK_ID range TOK_ID;
+
 wire_type:
 	{
 		astbuf3 = new AstNode(AST_WIRE);
 		current_wire_rand = false;
 		current_wire_const = false;
-	} wire_type_token_list delay {
-		$$ = astbuf3;
-	};
+	} 
+	wire_type_token_list delay { $$ = astbuf3; }
+	| {
+		astbuf3 = new AstNode(AST_WIRE);
+		current_wire_rand = false;
+		current_wire_const = false;
+	} 
+	wire_type_token_io wire_type_token_list_opt delay { $$ = astbuf3; }
+	;
+
+wire_type_token_list_opt:
+	wire_type_token_list
+	| /* empty */
+	;
 
 wire_type_token_list:
-	wire_type_token | wire_type_token_list wire_type_token |
-	wire_type_token_io ;
+	wire_type_token
+	| wire_type_token_list wire_type_token
+	;
 
 wire_type_token_io:
-	TOK_INPUT {
-		astbuf3->is_input = true;
-	} |
-	TOK_OUTPUT {
-		astbuf3->is_output = true;
-	} |
-	TOK_INOUT {
-		astbuf3->is_input = true;
-		astbuf3->is_output = true;
-	};
+	TOK_INPUT    { astbuf3->is_input = true; }
+	| TOK_OUTPUT { astbuf3->is_output = true; }
+	| TOK_INOUT  { astbuf3->is_input = true; astbuf3->is_output = true; }
+	;
 
 wire_type_token:
 	TOK_WIRE {
