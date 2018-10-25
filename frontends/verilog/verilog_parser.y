@@ -960,7 +960,7 @@ single_defparam_decl:
 	};
 
 wire_decl:
-	attr wire_type range {
+	attr wire_type range_or_multirange {
 		albuf = $1;
 		astbuf1 = $2;
 		astbuf2 = $3;
