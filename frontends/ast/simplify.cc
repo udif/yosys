@@ -803,11 +803,19 @@ bool AstNode::simplify(bool const_fold, bool at_zero, bool in_lvalue, int stage,
 	// annotate wires with their ranges
 	if (type == AST_WIRE) {
 		if (children.size() > 0) {
+			int left, right, total_size = 1;
 			if (children[0]->type == AST_MULTIRANGE) {
-				for (int i = 0; i < children[0]->multirange_dimensions; i++) {
-					
+				for (auto node: children[0]->children) {
+					left  = node->children[0]->integer;
+					right = node->children[1]->integer;
+					total_size *= abs(left-right)+1;
 				}
-			}else if (children[0]->range_valid) {
+				range_valid = true;
+				range_swapped = false;
+				range_left = total_size - 1;
+				range_right = 0;
+				log_file_warning(filename, linenum, "total_size:%d\n", total_size);
+			} else if (children[0]->range_valid) {
 				if (!range_valid)
 					did_something = true;
 				range_valid = true;
